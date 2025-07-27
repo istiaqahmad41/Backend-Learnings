@@ -1,0 +1,126 @@
+const express = require("express");
+const app = express();
+const PORT = 8000;
+
+
+const mongoose = require('mongoose');
+const fs = require("fs")
+
+
+
+//Connect mongoose
+
+mongoose.connect('mongodb://127.0.0.1:27017/istiaqMongo-01')
+.then(()=> console.log('MongoDB Connected!'))
+.catch((err)=> console.log("Mongo Error",err));
+
+
+
+// Mongoose Schema
+
+const userSchema = new mongoose.Schema({
+
+    first_name: {
+        type: String,
+        required: true,
+    },
+    last_name: {
+        type: String
+    }
+    ,
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+    }
+    ,
+    gender: {
+        type: String,
+    }
+    , city: {
+        type: String
+    }
+
+
+
+},{
+    timestamps: true,
+});
+
+// model from mongoose schema
+const UserModel =  mongoose.model('user',userSchema);
+
+//Routes
+
+//  /user -api 
+app.get("/users", async (req, res) => {
+    const allDbusers= await UserModel.find({})
+const html = `<ul>
+
+${allDbusers.map((user) => `<li>${user.first_name} - ${user.email}  - ${user.gender}</li>`).join("")}</ul>`;
+
+res.send(html);
+});
+
+
+//    /api/user -api 
+app.get("/api/users", async (req, res) => {
+    const allDbusers= await UserModel.find({});
+
+
+return res.json(allDbusers);
+});
+
+
+app.use(express.urlencoded({ extended: false }));
+
+app.post('/api/users', async(req, res) => {
+
+    const body = req.body;
+    //Create new user
+     if( !body || !body.first_name || !body.last_name ||!body.email ||!body.gender ||!body.city )
+    {
+         return res.status(400).json({msg:"All fields are req...."});
+
+     }
+    const userData =   await UserModel.create({
+
+
+    first_name: body.first_name,
+    last_name: body.last_name,
+    email: body.email,
+    gender: body.gender,
+    city: body.city
+});
+
+console.log('userData : ',userData)
+return res.status(201).json({msg:"success"});
+});
+
+app.route("/api/users/:id")
+    .get(async(req, res) => {
+
+   const user = await UserModel.findById(req.params.id);
+
+   if(!user) return res.status(404).json({msg:"User not found!"})
+        return res.json(user);
+    })
+
+    .patch(async(req, res) => {
+      // update a user data 
+ await  UserModel.findByIdAndUpdate(req.params.id,{last_name: "Last Name Changed"});
+        return res.json({status:"Patch Success"})
+    })
+    .delete(async(req, res) => {
+    
+        // delete a user data
+             await UserModel.findByIdAndDelete(req.params.id)
+             return res.json({status:"Delete Success"})
+
+        
+    });
+
+
+
+
+app.listen(PORT, () => console.log(`Server Started at PORT: ${PORT}`));
